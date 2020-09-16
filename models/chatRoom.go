@@ -8,13 +8,15 @@ type ChatRoom struct {
 	name     string
 	users    []*User
 	messages []string
+	author   string
 }
 
-func NewChatRoom(name string) *ChatRoom {
+func NewChatRoom(name string, author string) *ChatRoom {
 	return &ChatRoom{
 		name:     name,
 		users:    make([]*User, 0),
 		messages: make([]string, 0),
+		author:   author,
 	}
 }
 

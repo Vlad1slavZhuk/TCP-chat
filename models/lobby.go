@@ -111,19 +111,23 @@ func (l *Lobby) Leave(user *User) {
 }
 
 func (l *Lobby) DeleteChatRoom(user *User, name string) {
-	if l.chatRooms[name] != nil {
-		if user.chatRoom == nil || user.chatRoom.name != name {
+	if l.chatRooms[name] != nil && l.chatRooms[name].author == user.name {
+		if user.chatRoom == nil {
 			l.chatRooms[name].Delete()
 			delete(l.chatRooms, l.chatRooms[name].name)
-			user.outgoing <- fmt.Sprintf("<SUCCESS> You delete chat room %s.\n", name)
 		} else {
-			user.chatRoom = nil
+			if user.chatRoom.name != name {
+				l.LeaveChatRoom(user)
+			}
 			l.chatRooms[name].Delete()
 			delete(l.chatRooms, l.chatRooms[name].name)
-			user.outgoing <- fmt.Sprintf("<SUCCESS> You delete chat room \"%s\".\n", name)
 		}
+		user.outgoing <- fmt.Sprintf("<SUCCESS> You delete chat room \"%s\".\n", name)
+		log.Printf("Deleted chat room by \"%s\".", user.name)
+	} else {
+		user.outgoing <- fmt.Sprintf("<WARNING> You are not the creator of the chat room \"%s\".\n", name)
+		log.Printf("An attempt to delete the chat room by user \"%s\".\n", user.name)
 	}
-	log.Println("Deleted chat room by user.")
 }
 
 func (l *Lobby) SendMessage(msg *Message) {
@@ -170,14 +174,13 @@ func (l *Lobby) CreateChatRoom(user *User, name string) {
 		log.Printf("%s tried to create chat room with a name already in use.\n", user.name)
 		return
 	}
+	if user.name == "Anonymous" {
+		user.outgoing <- "<WARNING> Change name and try again.\n"
+		return
+	}
 
-	chatRoom := NewChatRoom(name)
+	chatRoom := NewChatRoom(name, user.name)
 	l.chatRooms[name] = chatRoom
-
-	/*go func() {
-		time.Sleep(7 * 24 * time.Hour)
-		l.deleteChatRoom <- chatRoom
-	}()*/
 
 	user.outgoing <- fmt.Sprintf("<SUCCESS> Created chat room \"%s\".\n", chatRoom.name)
 	log.Printf("%s created chat room \"%s\".", user.name, chatRoom.name)
